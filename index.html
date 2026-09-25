@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Day 2 — Happy Birthday, Angry Bird! 🐦✨</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '#ff75c3',
+                            purple: '#9a74f1',
+                            blue: '#24c6dc',
+                            dark: '#0a0915',
+                            card: 'rgba(255, 255, 255, 0.04)',
+                            border: 'rgba(255, 255, 255, 0.12)'
+                        }
+                    },
+                    fontFamily: {
+                        title: ['Cinzel', 'serif'],
+                        serif: ['Playfair Display', 'serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 3s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        glow: {
+                            '0%': { filter: 'drop-shadow(0 0 10px rgba(255,117,195,0.4))' },
+                            '100%': { filter: 'drop-shadow(0 0 25px rgba(154,116,241,0.8))' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            height: 100%;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #06050c;
+            color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Ambient Aurora background layer */
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(255, 117, 195, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 30%, rgba(154, 116, 241, 0.18) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(36, 198, 220, 0.12) 0%, transparent 45%);
+            filter: blur(50px);
+        }
+
+        /* Glassmorphism styling */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.035);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-card:hover, .glass-card:active {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 117, 195, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(255, 117, 195, 0.12);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #06050c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 117, 195, 0.25);
+            border-radius: 999px;
+        }
+
+        /* Custom Cursor Glow */
+        #cursor-glow {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 117, 195, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s;
+        }
+
+        /* Shaking angry bird animation */
+        @keyframes angryShake {
+            0% { transform: rotate(0deg) scale(1); }
+            20% { transform: rotate(-12deg) scale(1.1); }
+            40% { transform: rotate(12deg) scale(1.15); }
+            60% { transform: rotate(-8deg) scale(1.1); }
+            80% { transform: rotate(8deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .animate-shake {
+            animation: angryShake 0.6s cubic-bezier(.36,.07,.19,-0.97) both;
+        }
+
+        /* Polaroid styling */
+        .polaroid-frame {
+            background: linear-gradient(145deg, #ffffff, #f0f0f5);
+            padding: 10px 10px 35px 10px;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 117, 195, 0.2);
+            transform-style: preserve-3d;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            touch-action: pan-y;
+        }
+
+        .polaroid-frame:hover {
+            box-shadow: 0 25px 45px -10px rgba(255, 117, 195, 0.35);
+        }
+
+        /* Glow Text Effect */
+        .glow-text {
+            text-shadow: 0 0 15px rgba(255, 117, 195, 0.4), 0 0 30px rgba(154, 116, 241, 0.2);
+        }
+
+        /* Active Tab Indicator */
+        .tab-btn.active {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 117, 195, 0.4);
+            box-shadow: 0 0 15px rgba(255, 117, 195, 0.2);
+        }
+
+        /* Minimum touch targets */
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between relative selection:bg-pink-500 selection:text-white">
+
+    <!-- Ambient Backdrop Effects -->
+    <div class="aurora-bg"></div>
+    <div id="cursor-glow" class="hidden md:block"></div>
+    <canvas id="three-canvas" class="fixed inset-0 z-0 pointer-events-none"></canvas>
+
+    <!-- Top Header / Navigation Bar -->
+    <header class="sticky top-0 z-50 w-full px-3 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md border-b border-white/10 bg-slate-950/50">
+        <div class="max-w-5xl mx-auto flex items-center justify-between gap-2">
+            
+            <!-- Logo / Brand Title -->
+            <div class="flex items-center space-x-2 cursor-pointer touch-target" onclick="switchTab(1)">
+                <span class="text-xl sm:text-2xl hover:scale-110 transition-transform">🐦</span>
+                <div>
+                    <span class="font-title text-xs sm:text-sm tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-cyan-300 font-bold">
+                        DAY 02
+                    </span>
+                    <span class="hidden xs:inline-block text-[10px] sm:text-xs text-slate-400 ml-1 font-mono">• 28 SEPT</span>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Buttons -->
+            <nav class="flex items-center space-x-1 glass-pill p-1 rounded-full">
+                <button onclick="switchTab(1)" id="nav-btn-1" class="tab-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 hover:text-white transition-all border border-transparent touch-target">
+                    01
+                </button>
+                <button onclick="switchTab(2)" id="nav-btn-2" class="tab-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 hover:text-white transition-all border border-transparent touch-target">
+                    02
+                </button>
+                <button onclick="switchTab(3)" id="nav-btn-3" class="tab-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 hover:text-white transition-all border border-transparent touch-target">
+                    03
+                </button>
+            </nav>
+
+            <!-- Counter & Audio Toggle Controls -->
+            <div class="flex items-center space-x-2">
+                <div class="glass-pill px-2.5 py-1 rounded-full text-[11px] font-mono text-pink-300 border border-pink-500/20">
+                    <span id="tab-progress">01</span>/03
+                </div>
+
+                <!-- Music Button -->
+                <button id="music-btn" onclick="toggleAudio()" title="Toggle Birthday Audio" class="glass-pill touch-target p-2 rounded-full hover:bg-white/10 transition-all text-pink-300 relative">
+                    <svg id="music-icon-off" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                    </svg>
+                    <svg id="music-icon-on" class="w-4 h-4 hidden animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12 0c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="relative z-10 flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-8">
+
+        <!-- ========================================== -->
+        <!-- TAB 01: "Okay... One More Thing 🐦" -->
+        <!-- ========================================== -->
+        <section id="tab-1" class="tab-content flex flex-col items-center justify-center min-h-[75vh] text-center space-y-6 sm:space-y-8 py-2">
+            
+            <!-- Day Badge -->
+            <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full glass-pill border border-pink-500/30 text-[11px] sm:text-xs text-pink-300 font-semibold tracking-wider uppercase">
+                <span>✨ DAY 02 CELEBRATION</span>
+            </div>
+
+            <!-- Main Heading -->
+            <h1 class="font-title text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white glow-text leading-tight max-w-2xl px-2">
+                Okay… One More Thing.
+            </h1>
+
+            <!-- Paragraph -->
+            <div class="max-w-xl text-slate-300 text-sm sm:text-base md:text-lg font-light leading-relaxed space-y-2.5 px-2">
+                <p>Yesterday was officially your birthday.</p>
+                <p>But honestly… I don’t think just one day is enough for an <span class="text-pink-300 font-semibold">Angry Bird</span> like you. 😂🐦</p>
+                <p class="pt-1 text-slate-400 text-xs sm:text-sm">So welcome to <span class="text-cyan-300 font-medium">Day 2</span>. No big formal speeches today. No extremely emotional paragraphs.</p>
+                <p class="italic text-pink-200/90 font-serif text-sm sm:text-base">Okay… maybe just a little. 😌</p>
+            </div>
+
+            <!-- Playful Interactive Angry Bird Widget -->
+            <div class="py-2 sm:py-4 flex flex-col items-center">
+                <div id="bird-widget" class="relative group cursor-pointer p-4 sm:p-5 rounded-full glass-card border border-pink-500/30 transition-transform duration-300 active:scale-95 touch-target">
+                    <span id="bird-icon" class="text-5xl sm:text-6xl block transition-transform">🐦</span>
+                    <div class="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                        TAP ME
+                    </div>
+                </div>
+
+                <!-- Secret Dynamic Popup Message -->
+                <div id="bird-dialog" class="min-h-[32px] mt-3 transition-all duration-300 flex items-center justify-center">
+                    <span class="text-xs sm:text-sm font-mono text-cyan-300 bg-slate-900/80 px-3 py-1 rounded-full border border-cyan-500/30 opacity-0 transition-opacity text-center max-w-[280px]" id="bird-dialog-text">
+                        Tap to check mood...
+                    </span>
+                </div>
+            </div>
+
+            <!-- CTA Button -->
+            <button onclick="switchTab(2)" class="group relative inline-flex items-center justify-center px-6 py-3.5 text-sm font-medium text-white transition-all duration-300 rounded-full glass-card hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 active:scale-95 border border-pink-500/40 touch-target w-full sm:w-auto max-w-xs">
+                <span class="relative flex items-center space-x-2">
+                    <span>Let Me Explain</span>
+                    <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </span>
+            </button>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 02: "For My Favourite Angry Bird ✨" -->
+        <!-- ========================================== -->
+        <section id="tab-2" class="tab-content hidden space-y-8 sm:space-y-12 py-2">
+            
+            <!-- Section Header -->
+            <div class="text-center space-y-3 max-w-2xl mx-auto px-2">
+                <div class="inline-block px-3 py-0.5 rounded-full text-[10px] font-mono text-cyan-300 glass-pill border border-cyan-500/20">
+                    CHAPTER 02 • THE ROUTINE
+                </div>
+                <h2 class="font-title text-2xl sm:text-4xl font-bold text-white glow-text">
+                    For My Favourite Angry Bird.
+                </h2>
+                <p class="text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed font-light">
+                    There are some people who slowly become part of your life… and then there are people who somehow just become part of your routine before you even realize it.
+                    <span class="block mt-1 font-medium text-pink-300">You somehow became the second one.</span>
+                </p>
+            </div>
+
+            <!-- Grid of Animated Routine Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">💬</div>
+                    <h3 class="text-base font-bold text-white">Random Conversations</h3>
+                    <p class="text-xs text-slate-400">Starting from absolutely nowhere and ending late with zero context.</p>
+                </div>
+
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">😤</div>
+                    <h3 class="text-base font-bold text-white">Unnecessary Arguments</h3>
+                    <p class="text-xs text-slate-400">Debating stupid things with 100% seriousness just because you felt like arguing.</p>
+                </div>
+
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">📲</div>
+                    <h3 class="text-base font-bold text-white">Sending Random Reels</h3>
+                    <p class="text-xs text-slate-400">Spamming each other with reels that require zero explanation.</p>
+                </div>
+
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">🌙</div>
+                    <h3 class="text-base font-bold text-white">Late-Night Talks</h3>
+                    <p class="text-xs text-slate-400">When the rest of the world goes quiet and we discuss literally everything.</p>
+                </div>
+
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">🧩</div>
+                    <h3 class="text-base font-bold text-white">Sharing Random Things</h3>
+                    <p class="text-xs text-slate-400">Unfiltered updates about daily life that nobody else would care about.</p>
+                </div>
+
+                <div class="glass-card p-4 sm:p-5 rounded-xl space-y-2">
+                    <div class="text-2xl">🤪</div>
+                    <h3 class="text-base font-bold text-white">Annoying Each Other</h3>
+                    <p class="text-xs text-slate-400">And somehow talking again 5 minutes later anyway. 😂</p>
+                </div>
+
+            </div>
+
+            <div class="text-center py-2 px-2">
+                <p class="text-sm sm:text-base md:text-lg font-serif italic text-purple-200">
+                    "I don’t think you realize how naturally you’ve become part of my everyday life."
+                </p>
+            </div>
+
+            <!-- "Tiny Things I Actually Love" Floating Cards Section -->
+            <div class="space-y-4">
+                <h3 class="font-title text-xl text-center text-pink-300 font-bold">
+                    Tiny Things I Actually Love ✨
+                </h3>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-cyan-300 block mb-0.5">01</span>
+                        <p class="text-xs font-medium text-slate-200">One random text message</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-pink-300 block mb-0.5">02</span>
+                        <p class="text-xs font-medium text-slate-200">A stupid joke</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-purple-300 block mb-0.5">03</span>
+                        <p class="text-xs font-medium text-slate-200">Late-night chats</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-amber-300 block mb-0.5">04</span>
+                        <p class="text-xs font-medium text-slate-200">Unnecessary arguments</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-emerald-300 block mb-0.5">05</span>
+                        <p class="text-xs font-medium text-slate-200">A random reel</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center">
+                        <span class="text-[10px] font-mono text-pink-300 block mb-0.5">06</span>
+                        <p class="text-xs font-medium text-slate-200">"What are you doing?"</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-lg text-center col-span-2">
+                        <span class="text-[10px] font-mono text-indigo-300 block mb-0.5">07</span>
+                        <p class="text-xs font-medium text-slate-200">A conversation that had absolutely no purpose 😂</p>
+                    </div>
+                </div>
+
+                <div class="text-center pt-2 px-2">
+                    <p class="text-xs sm:text-sm text-slate-300">
+                        And now… you’re just part of my day. <br>
+                        <span class="text-pink-300 font-semibold">And I’m genuinely happy that you are.</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Polaroid Memory Photo Section -->
+            <div class="flex flex-col items-center justify-center space-y-4 pt-4 px-2">
+                <div id="polaroid-card" class="polaroid-frame rounded-sm w-full max-w-[240px] sm:max-w-xs cursor-pointer">
+                    <div class="aspect-square w-full bg-slate-800 overflow-hidden relative rounded-xs">
+                        <img id="friend-photo" src="image.jpeg" alt="Memory" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='birthday.jpeg';">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                    </div>
+                    <p class="text-slate-800 font-serif italic text-center text-xs sm:text-sm pt-3 font-semibold px-1">
+                        “One of the many little memories I’m glad I have.”
+                    </p>
+                </div>
+
+                <!-- Playful Status Progression Sequence -->
+                <div class="flex items-center space-x-1.5 sm:space-x-3 text-[11px] sm:text-xs font-semibold pt-2 flex-wrap justify-center gap-y-2">
+                    <span class="px-2.5 py-1 rounded-full glass-card text-pink-300">Angry Bird 🐦</span>
+                    <span class="text-slate-500">→</span>
+                    <span class="px-2.5 py-1 rounded-full glass-card text-purple-300">Cutie ✨</span>
+                    <span class="text-slate-500">→</span>
+                    <span class="px-2.5 py-1 rounded-full glass-card text-cyan-300 border border-cyan-400/30">Favourite Person 🤍</span>
+                </div>
+
+                <div class="text-center space-y-1 pt-1">
+                    <p class="text-slate-400 text-xs">I don’t know exactly when it happened…</p>
+                    <p class="text-base sm:text-lg font-bold text-white glow-text">...But I’m really glad it happened.</p>
+                </div>
+            </div>
+
+            <!-- Navigation Button -->
+            <div class="flex justify-center pt-4">
+                <button onclick="switchTab(3)" class="group relative inline-flex items-center justify-center px-6 py-3.5 text-sm font-medium text-white transition-all duration-300 rounded-full glass-card hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-600 active:scale-95 border border-purple-500/40 touch-target w-full sm:w-auto max-w-xs">
+                    <span class="flex items-center space-x-2">
+                        <span>One Last Thing</span>
+                        <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </span>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 03: "Happy Birthday, Cutie 🎂" -->
+        <!-- ========================================== -->
+        <section id="tab-3" class="tab-content hidden space-y-8 sm:space-y-10 py-2">
+            
+            <!-- Header Tag -->
+            <div class="text-center space-y-2 px-2">
+                <div class="inline-block px-3 py-0.5 rounded-full text-[10px] font-mono text-pink-300 glass-pill border border-pink-500/30">
+                    28 • SEPTEMBER • 2026
+                </div>
+                <h2 class="font-title text-2xl sm:text-4xl md:text-5xl font-extrabold text-white glow-text">
+                    Happy Birthday, Cutie.
+                </h2>
+                <p class="text-pink-300 text-sm sm:text-base font-serif italic">
+                    Again. 😂 <span class="text-slate-300 text-xs sm:text-sm font-sans not-italic block sm:inline">Because apparently we’re doing this for two days now.</span>
+                </p>
+            </div>
+
+            <!-- Animated Wishes List Grid -->
+            <div class="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 px-2">
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">✨</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More reasons to smile</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">🌙</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More peaceful nights</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">🚀</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More exciting opportunities</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">🌍</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More adventures</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">😂</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More reasons to laugh</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3">
+                    <span class="text-xl">📸</span>
+                    <span class="text-slate-200 text-xs sm:text-sm font-medium">More memories</span>
+                </div>
+                <div class="glass-card p-3 rounded-lg flex items-center space-x-3 sm:col-span-2 border-pink-500/30 bg-pink-500/5">
+                    <span class="text-xl">🐦</span>
+                    <span class="text-pink-300 text-xs sm:text-sm font-semibold">And maybe… a little less anger.</span>
+                </div>
+            </div>
+
+            <!-- Playful Punchline -->
+            <div class="text-center px-2">
+                <p class="text-slate-400 italic text-xs sm:text-sm">
+                    Although… I don’t think I’d recognize you without it. 😂🐦
+                </p>
+            </div>
+
+            <!-- Final Personal Message Card -->
+            <div class="glass-card max-w-2xl mx-auto p-5 sm:p-6 rounded-2xl space-y-3 border border-white/15 relative overflow-hidden mx-2">
+                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                <h3 class="font-title text-base sm:text-lg text-pink-300 font-bold">A Little Note For You</h3>
+                <p class="text-slate-300 leading-relaxed text-xs sm:text-sm">
+                    I’m genuinely grateful that our paths crossed. From barely being close to somehow becoming part of each other’s everyday routine… That’s a pretty amazing little story.
+                </p>
+                <p class="text-slate-300 leading-relaxed text-xs sm:text-sm">
+                    So here’s to more random conversations, stupid fights, late-night talks, reels, laughs, memories, and you finding new reasons to annoy me. 😂
+                </p>
+            </div>
+
+            <!-- Grand Finale Celebration Trigger Area -->
+            <div class="text-center space-y-4 pt-2 px-2">
+                
+                <div class="space-y-2">
+                    <h2 class="font-title text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300 glow-text">
+                        Happy Birthday, Angry Bird! 🐦🎂✨
+                    </h2>
+                    <p class="text-slate-300 text-xs sm:text-sm font-light">
+                        Day 2 — because one day simply wasn’t enough.
+                    </p>
+                </div>
+
+                <div class="space-y-1 text-slate-200">
+                    <p class="text-xs sm:text-sm font-medium">Thank you for being you.</p>
+                    <p class="text-sm sm:text-base font-semibold text-pink-300">Stay my favourite Angry Bird. 🐦🤍</p>
+                </div>
+
+                <!-- Signoff lines -->
+                <div class="pt-2 space-y-1 text-xs text-slate-400">
+                    <p>See you tomorrow, Angry Bird. Actually… don’t get too excited. 😂</p>
+                    <p class="text-pink-300 font-serif text-sm pt-1">Happy Birthday, Cutie. ✨</p>
+                </div>
+
+                <!-- Final Celebration Button & Music Indicator -->
+                <div class="pt-4 flex flex-col items-center gap-3">
+                    <button id="celebrate-btn" onclick="triggerCelebration()" class="px-6 py-3.5 rounded-full font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 active:scale-95 transition-all shadow-lg shadow-pink-500/25 flex items-center space-x-2 touch-target">
+                        <span>🎉 Launch Birthday Fireworks!</span>
+                    </button>
+
+                    <button onclick="toggleAudio()" class="text-[11px] font-mono text-cyan-300 hover:underline flex items-center gap-1.5 pt-1">
+                        <span id="tab3-audio-status">🎵 Tap to toggle Birthday Melodies</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 py-4 text-center text-[10px] sm:text-xs text-slate-500 border-t border-white/5 mt-4">
+        <p>Made with 🤍 for my Favourite Angry Bird • 28 Sept 2026</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Personalization Variables
+        const friendName = "Angry Bird";
+        const nickname = "Cutie";
+        const dayNumber = "02";
+        const birthdayDate = "28 September 2026";
+        const photoPath = "image.jpeg";
+        const finalMessage = "Thank you for being part of my everyday life. Stay the same wonderful Angry Bird.";
+
+        let currentTab = 1;
+        let isAudioPlaying = false;
+        let audioSynthContext = null;
+        let bdayMelodyTimer = null;
+
+        // Happy Birthday Synth Melody Notes (Frequencies in Hz)
+        const happyBirthdayNotes = [
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 293.66, duration: 0.6 }, // D4
+            { note: 261.63, duration: 0.6 }, // C4
+            { note: 349.23, duration: 0.6 }, // F4
+            { note: 329.63, duration: 1.0 }, // E4
+
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 293.66, duration: 0.6 }, // D4
+            { note: 261.63, duration: 0.6 }, // C4
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 349.23, duration: 1.0 }, // F4
+
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 261.63, duration: 0.3 }, // C4
+            { note: 523.25, duration: 0.6 }, // C5
+            { note: 440.00, duration: 0.6 }, // A4
+            { note: 349.23, duration: 0.6 }, // F4
+            { note: 329.63, duration: 0.6 }, // E4
+            { note: 293.66, duration: 0.8 }, // D4
+
+            { note: 466.16, duration: 0.3 }, // A#4
+            { note: 466.16, duration: 0.3 }, // A#4
+            { note: 440.00, duration: 0.6 }, // A4
+            { note: 349.23, duration: 0.6 }, // F4
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 349.23, duration: 1.2 }  // F4
+        ];
+
+        // Mobile-Optimized Three.js Particle Universe Background
+        let scene, camera, renderer, particlesMesh;
+        function initThreeJS() {
+            const canvas = document.getElementById('three-canvas');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+            // Reduce particle count on mobile screens for higher performance
+            const isMobile = window.innerWidth < 640;
+            const count = isMobile ? 350 : 650;
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            for(let i = 0; i < count * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 14;
+                positions[i+1] = (Math.random() - 0.5) * 14;
+                positions[i+2] = (Math.random() - 0.5) * 14;
+
+                colors[i] = Math.random() > 0.5 ? 1.0 : 0.6;
+                colors[i+1] = Math.random() > 0.5 ? 0.5 : 0.8;
+                colors[i+2] = 1.0;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: isMobile ? 0.04 : 0.035,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.75
+            });
+
+            particlesMesh = new THREE.Points(geometry, material);
+            scene.add(particlesMesh);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                if (particlesMesh) {
+                    particlesMesh.rotation.y += 0.0006;
+                    particlesMesh.rotation.x += 0.0003;
+                }
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Custom Cursor Glow
+        function initCursorGlow() {
+            const glow = document.getElementById('cursor-glow');
+            window.addEventListener('mousemove', (e) => {
+                if (glow) {
+                    glow.style.left = e.clientX + 'px';
+                    glow.style.top = e.clientY + 'px';
+                }
+
+                if(particlesMesh) {
+                    particlesMesh.rotation.x = (e.clientY / window.innerHeight - 0.5) * 0.15;
+                    particlesMesh.rotation.y = (e.clientX / window.innerWidth - 0.5) * 0.15;
+                }
+            });
+        }
+
+        // Tab Switcher Logic
+        function switchTab(tabNum) {
+            if (tabNum === currentTab) return;
+
+            const oldTab = document.getElementById(`tab-${currentTab}`);
+            const newTab = document.getElementById(`tab-${tabNum}`);
+            
+            gsap.to(oldTab, {
+                opacity: 0,
+                y: -10,
+                duration: 0.2,
+                onComplete: () => {
+                    oldTab.classList.add('hidden');
+                    newTab.classList.remove('hidden');
+                    
+                    gsap.fromTo(newTab, 
+                        { opacity: 0, y: 15 },
+                        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
+                    );
+
+                    currentTab = tabNum;
+                    updateNavUI();
+                    
+                    // On entering Tab 3: Trigger celebration & automatically play Birthday Music
+                    if(tabNum === 3) {
+                        triggerCelebration();
+                        if(!isAudioPlaying) {
+                            startBirthdayAudio();
+                        }
+                    }
+                }
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateNavUI() {
+            document.getElementById('tab-progress').innerText = `0${currentTab}`;
+            
+            for(let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(i === currentTab) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        }
+
+        // Playful Angry Bird Interaction Widget
+        function initBirdWidget() {
+            const birdWidget = document.getElementById('bird-widget');
+            const birdIcon = document.getElementById('bird-icon');
+            const dialogText = document.getElementById('bird-dialog-text');
+
+            const responses = [
+                "Still angry? Probably. 😂",
+                "Grumpy level: 99% 🐦",
+                "0.1s away from glaring at you 👀",
+                "Secretly smiling right now? ✨",
+                "100% Favourite Angry Bird 🤍"
+            ];
+
+            let index = 0;
+
+            function triggerBirdAction() {
+                birdIcon.classList.remove('animate-shake');
+                void birdIcon.offsetWidth;
+                birdIcon.classList.add('animate-shake');
+
+                dialogText.innerText = responses[index];
+                dialogText.style.opacity = '1';
+
+                index = (index + 1) % responses.length;
+            }
+
+            birdWidget.addEventListener('click', triggerBirdAction);
+        }
+
+        // Web Audio Synthesizer - Happy Birthday Song Generator
+        function startBirthdayAudio() {
+            try {
+                if (!audioSynthContext) {
+                    audioSynthContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if(audioSynthContext.state === 'suspended') {
+                    audioSynthContext.resume();
+                }
+
+                isAudioPlaying = true;
+                updateAudioUI(true);
+
+                let noteIndex = 0;
+
+                function playNextNote() {
+                    if (!isAudioPlaying) return;
+
+                    const item = happyBirthdayNotes[noteIndex];
+                    const osc = audioSynthContext.createOscillator();
+                    const gain = audioSynthContext.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(item.note, audioSynthContext.currentTime);
+
+                    // Soft envelope
+                    gain.gain.setValueAtTime(0.001, audioSynthContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.08, audioSynthContext.currentTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioSynthContext.currentTime + item.duration - 0.05);
+
+                    osc.connect(gain);
+                    gain.connect(audioSynthContext.destination);
+
+                    osc.start();
+                    osc.stop(audioSynthContext.currentTime + item.duration);
+
+                    noteIndex = (noteIndex + 1) % happyBirthdayNotes.length;
+                    bdayMelodyTimer = setTimeout(playNextNote, item.duration * 1000);
+                }
+
+                playNextNote();
+
+            } catch(e) {
+                console.log("Audio playback restricted or not supported:", e);
+            }
+        }
+
+        function stopBirthdayAudio() {
+            isAudioPlaying = false;
+            if(bdayMelodyTimer) clearTimeout(bdayMelodyTimer);
+            updateAudioUI(false);
+        }
+
+        function toggleAudio() {
+            if(isAudioPlaying) {
+                stopBirthdayAudio();
+            } else {
+                startBirthdayAudio();
+            }
+        }
+
+        function updateAudioUI(playing) {
+            const iconOff = document.getElementById('music-icon-off');
+            const iconOn = document.getElementById('music-icon-on');
+            const statusText = document.getElementById('tab3-audio-status');
+
+            if(playing) {
+                iconOff.classList.add('hidden');
+                iconOn.classList.remove('hidden');
+                if(statusText) statusText.innerText = "🔊 Playing Birthday Tune (Tap to Pause)";
+            } else {
+                iconOff.classList.remove('hidden');
+                iconOn.classList.add('hidden');
+                if(statusText) statusText.innerText = "🎵 Tap to Play Birthday Melodies";
+            }
+        }
+
+        // 5-Second Celebration Confetti Shower
+        function triggerCelebration() {
+            const duration = 5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 25, spread: 360, ticks: 50, zIndex: 100 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 35 * (timeLeft / duration);
+                
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.1, 0.4), y: Math.random() - 0.2 },
+                    colors: ['#ff75c3', '#9a74f1', '#24c6dc', '#ffffff']
+                }));
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.6, 0.9), y: Math.random() - 0.2 },
+                    colors: ['#ff75c3', '#9a74f1', '#24c6dc', '#ffffff']
+                }));
+            }, 250);
+        }
+
+        // Navigation Shortcuts & Touch Swipes
+        function initNavigationListeners() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' && currentTab < 3) {
+                    switchTab(currentTab + 1);
+                } else if (e.key === 'ArrowLeft' && currentTab > 1) {
+                    switchTab(currentTab - 1);
+                }
+            });
+
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            document.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            document.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+
+            function handleSwipe() {
+                const swipeThreshold = 60;
+                if (touchEndX < touchStartX - swipeThreshold && currentTab < 3) {
+                    switchTab(currentTab + 1);
+                }
+                if (touchEndX > touchStartX + swipeThreshold && currentTab > 1) {
+                    switchTab(currentTab - 1);
+                }
+            }
+        }
+
+        // Touch Tilt effect for Polaroid
+        function initPolaroidTilt() {
+            const card = document.getElementById('polaroid-card');
+            if (!card) return;
+
+            card.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                const rect = card.getBoundingClientRect();
+                const x = touch.clientX - rect.left - rect.width / 2;
+                const y = touch.clientY - rect.top - rect.height / 2;
+                card.style.transform = `rotateY(${x / 10}deg) rotateX(${-y / 10}deg)`;
+            }, { passive: true });
+
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'rotateY(0deg) rotateX(0deg)';
+            });
+        }
+
+        // Window Load Initializer
+        window.onload = function () {
+            initThreeJS();
+            initCursorGlow();
+            initBirdWidget();
+            initNavigationListeners();
+            initPolaroidTilt();
+            updateNavUI();
+
+            gsap.from("body", { opacity: 0, duration: 0.8, ease: "power2.out" });
+        };
+    </script>
+</body>
+</html>
